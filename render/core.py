@@ -214,11 +214,12 @@ def look_at(eye: Vec3d, target: Vec3d, up: Vec3d = Vec3d(0, -1, 0)) -> Mat4d:
     http://www.songho.ca/opengl/gl_camera.html#lookat
 
     Args:
-        eye: 摄像机的世界坐标位置
-        target: 观察点的位置
-        up: 就是你想让摄像机立在哪个方向
+        eye: Camera position in world coordinates
+        target: The point the camera is looking at
+        up: The direction you want the camera to stand upright in.
             https://stackoverflow.com/questions/10635947/what-exactly-is-the-up-vector-in-opengls-lookat-function
-            这里默认使用了 0, -1, 0， 因为 blender 导出来的模型数据似乎有问题，导致y轴总是反的，于是把摄像机的up也翻一下得了。
+            The default is set to (0, -1, 0) because the model data exported from Blender
+            seems to have flipped the Y-axis, so we flip the camera's up vector as well.
     """
     f = normalize(eye - target)
     l = normalize(cross_product(up, f))  # noqa: E741
@@ -236,33 +237,40 @@ def look_at(eye: Vec3d, target: Vec3d, up: Vec3d = Vec3d(0, -1, 0)) -> Mat4d:
 
 def perspective_project(r, t, n, f, b=None, l=None):  # noqa: E741
     """
-    目的：
-        把相机坐标转换成投影在视网膜的范围在(-1, 1)的笛卡尔坐标
+    Purpose:
+        Convert camera coordinates into Cartesian coordinates within (-1, 1)
+        as projected onto the image plane (the “retina”).
 
-    原理：
-        对于x，y坐标，相似三角形可以算出投影点的x，y
-        对于z坐标，是假设了near是-1，far是1，然后带进去算的
+    Principle:
+        For x and y coordinates, the projected point is computed using similar triangles.
+        For the z coordinate, we assume near = -1 and far = 1 and derive the mapping.
         http://www.songho.ca/opengl/gl_projectionmatrix.html
         https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/opengl-perspective-projection-matrix
 
-    推导出来的矩阵：
+    Derived projection matrix:
         [
-            2n/(r-l) 0        (r+l/r-l)   0
-            0        2n/(t-b) (t+b)/(t-b) 0
-            0        0        -(f+n)/f-n  (-2*f*n)/(f-n)
-            0        0        -1          0
+            2n/(r-l)   0         (r+l)/(r-l)      0
+            0          2n/(t-b)  (t+b)/(t-b)      0
+            0          0         -(f+n)/(f-n)   (-2*f*n)/(f-n)
+            0          0         -1              0
         ]
 
-    实际上由于我们用的视网膜(near pane)是个关于远点对称的矩形，所以矩阵简化为：
+    Since our near-plane (“retina”) is symmetric around the optical center,
+    the matrix simplifies to:
         [
-            n/r      0        0           0
-            0        n/t      0           0
-            0        0        -(f+n)/f-n  (-2*f*n)/(f-n)
-            0        0        -1          0
+            n/r        0         0                0
+            0          n/t       0                0
+            0          0         -(f+n)/(f-n)   (-2*f*n)/(f-n)
+            0          0         -1               0
         ]
 
     Args:
-        r: right, t: top, n: near, f: far, b: bottom, l: left
+        r: right
+        t: top
+        n: near
+        f: far
+        b: bottom
+        l: left
     """
     return Mat4d(
         [

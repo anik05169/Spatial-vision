@@ -63,24 +63,24 @@ def remove_background(image: Image,
 
 def random_crop(image, crop_scale=(0.8, 0.95)):
     """
-    随机裁切图片
-        image (numpy.ndarray):  (H, W, C)。
-        crop_scale (tuple): (min_scale, max_scale)。
+    Randomly crop an image
+        image (numpy.ndarray): (H, W, C).
+        crop_scale (tuple): (min_scale, max_scale).
     """
     assert isinstance(image, Image.Image), "iput must be PIL.Image.Image"
     assert len(crop_scale) == 2 and 0 < crop_scale[0] <= crop_scale[1] <= 1
 
     width, height = image.size
 
-    # 计算裁切的高度和宽度
+    # Calculate the crop width and height
     crop_width = random.randint(int(width * crop_scale[0]), int(width * crop_scale[1]))
     crop_height = random.randint(int(height * crop_scale[0]), int(height * crop_scale[1]))
 
-    # 随机选择裁切的起始点
+    # Randomly choose the top-left corner of the crop
     left = random.randint(0, width - crop_width)
     top = random.randint(0, height - crop_height)
 
-    # 裁切图片
+    # Crop the image
     cropped_image = image.crop((left, top, left + crop_width, top + crop_height))
 
     return cropped_image
@@ -122,35 +122,35 @@ def remove_outliers_and_average(tensor, threshold=1.5):
 def remove_outliers_and_average_circular(tensor, threshold=1.5):
     assert tensor.dim() == 1, "dimension of input Tensor must equal to 1"
 
-    # 将角度转换为二维平面上的点
+    # Convert angles into points on a 2D plane
     radians = tensor * torch.pi / 180.0
     x_coords = torch.cos(radians)
     y_coords = torch.sin(radians)
 
-    # 计算平均向量
+    # Compute the mean vector
     mean_x = torch.mean(x_coords)
     mean_y = torch.mean(y_coords)
 
     differences = torch.sqrt((x_coords - mean_x) * (x_coords - mean_x) + (y_coords - mean_y) * (y_coords - mean_y))
 
-    # 计算四分位数和 IQR
+    # Compute quartiles and IQR
     q1 = torch.quantile(differences, 0.25)
     q3 = torch.quantile(differences, 0.75)
     iqr = q3 - q1
 
-    # 计算上下限
+    # Compute lower and upper bounds
     lower_bound = q1 - threshold * iqr
     upper_bound = q3 + threshold * iqr
 
-    # 筛选非离群点
+    # Select non-outlier points
     non_outliers = tensor[(differences >= lower_bound) & (differences <= upper_bound)]
 
     if len(non_outliers) == 0:
         mean_angle = torch.atan2(mean_y, mean_x) * 180.0 / torch.pi
         mean_angle = (mean_angle + 360) % 360
-        return mean_angle  # 如果没有非离群点，返回 None
+        return mean_angle   # If there are no non-outliers, return None
 
-    # 对非离群点再次计算平均向量
+    # Recalculate the mean vector using only non-outliers
     radians = non_outliers * torch.pi / 180.0
     x_coords = torch.cos(radians)
     y_coords = torch.sin(radians)
@@ -181,7 +181,7 @@ def get_proj2D_XYZ(phi, theta, gamma):
     z = scale(z)
     return x, y, z
 
-# 绘制3D坐标轴
+# Draw 3D coordinate axes
 def draw_axis(ax, origin, vector, color, label=None):
     ax.quiver(origin[0], origin[1], vector[0], vector[1], angles='xy', scale_units='xy', scale=1, color=color)
     if label!=None:
@@ -190,7 +190,7 @@ def draw_axis(ax, origin, vector, color, label=None):
 def matplotlib_2D_arrow(angles, rm_bkg_img):
     fig, ax = plt.subplots(figsize=(8, 8))
 
-    # 设置旋转角度
+    # Set rotation angles
     phi   = np.radians(angles[0])
     theta = np.radians(angles[1])
     gamma = np.radians(-1*angles[2])
@@ -200,11 +200,11 @@ def matplotlib_2D_arrow(angles, rm_bkg_img):
         extent = [-5*w/h, 5*w/h, -5, 5]
     else:
         extent = [-5, 5, -5*h/w, 5*h/w]
-    ax.imshow(rm_bkg_img, extent=extent, zorder=0, aspect ='auto')  # extent 设置图片的显示范围
+    ax.imshow(rm_bkg_img, extent=extent, zorder=0, aspect ='auto')  # extent sets the displayed range of the background image
 
     origin = np.array([0, 0])
 
-    # 旋转后的向量
+    # Rotated vectors
     rot_x, rot_y, rot_z = get_proj2D_XYZ(phi, theta, gamma)
 
     # draw arrow
@@ -225,11 +225,11 @@ def matplotlib_2D_arrow(angles, rm_bkg_img):
         # draw_axis(ax, origin, rot_z, 'b', label='top')
         # draw_axis(ax, origin, rot_x, 'r', label='front')
 
-    # 关闭坐标轴和网格
+    # Turn off axes and grid
     ax.set_axis_off()
     ax.grid(False)
 
-    # 设置坐标范围
+    # Set coordinate limits
     ax.set_xlim(-5, 5)
     ax.set_ylim(-5, 5)
 
@@ -261,43 +261,44 @@ def render_3D_axis(phi, theta, gamma):
 
 def overlay_images_with_scaling(center_image: Image.Image, background_image, target_size=(512, 512)):
     """
-    调整前景图像大小为 512x512，将背景图像缩放以适配，并中心对齐叠加
-    :param center_image: 前景图像
-    :param background_image: 背景图像
-    :param target_size: 前景图像的目标大小，默认 (512, 512)
-    :return: 叠加后的图像
+    Resize the foreground image to 512x512, scale the background image to fit,
+    and center-align the overlay.
+    :param center_image: Foreground image
+    :param background_image: Background image
+    :param target_size: Target size for the foreground image, default (512, 512)
+    :return: The overlaid image
     """
-    # 确保输入图像为 RGBA 模式
+    # Ensure the input images are in RGBA mode
     if center_image.mode != "RGBA":
         center_image = center_image.convert("RGBA")
     if background_image.mode != "RGBA":
         background_image = background_image.convert("RGBA")
     
-    # 调整前景图像大小
+    # Resize the foreground image
     center_image = center_image.resize(target_size)
     
-    # 缩放背景图像，确保其适合前景图像的尺寸
+    # Scale the background image so it fits within the foreground size
     bg_width, bg_height = background_image.size
     
-    # 按宽度或高度等比例缩放背景
+    # Scale the background proportionally by width or height
     scale = target_size[0] / max(bg_width, bg_height)
     new_width = int(bg_width * scale)
     new_height = int(bg_height * scale)
     resized_background = background_image.resize((new_width, new_height))
-    # 计算需要的填充量
+    # Compute required padding
     pad_width = target_size[0] - new_width
     pad_height = target_size[0] - new_height
 
-    # 计算上下左右的 padding
+    # Compute padding for each side
     left = pad_width // 2
     right = pad_width - left
     top = pad_height // 2
     bottom = pad_height - top
 
-    # 添加 padding
+    # Add padding
     resized_background = ImageOps.expand(resized_background, border=(left, top, right, bottom), fill=(255,255,255,255))
     
-    # 将前景图像叠加到背景图像上
+    # Overlay the foreground image onto the background image
     result = resized_background.copy()
     result.paste(center_image, (0, 0), mask=center_image)
     

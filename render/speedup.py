@@ -68,7 +68,7 @@ def generate_faces(triangles, width, height):
         pixels = []
         for j in range(minx, maxx + 2):
             for k in range(miny - 1, maxy + 2):
-                # 必须显式转换成 double 参与底下的运算，不然结果是错的
+                # Must explicitly convert to double for the calculations below
                 x = j
                 y = k
 
@@ -86,8 +86,9 @@ def generate_faces(triangles, width, height):
 
                 z = 1 / (bc[0] / a[2] + bc[1] / b[2] + bc[2] / c[2])
 
-                # Blender 导出来的 uv 数据，跟之前的顶点数据有一样的问题，Y轴是个反的，
-                # 所以这里的纹理图片要旋转一下才能 work
+
+                # The UV data exported from Blender has the same issue as the vertex data:
+                # the Y-axis is flipped. So the texture image must be flipped to work correctly.
                 v = (uva[0] * bc[0] / a[2] + uvb[0] * bc[1] / b[2] + uvc[0] * bc[2] / c[2]) * z * width
                 u = height - (uva[1] * bc[0] / a[2] + uvb[1] * bc[1] / b[2] + uvc[1] * bc[2] / c[2]) * z * height
 

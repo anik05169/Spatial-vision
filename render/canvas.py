@@ -21,19 +21,21 @@ class Canvas:
             self.img.putpixel(dot, color + (255,))
 
     def add_white_border(self, border_size=5):
-        # 确保输入图像是 RGBA 模式
+        # Ensure the input image is in RGBA mode
         if self.img.mode != "RGBA":
             self.img = self.img.convert("RGBA")
         
-        # 提取 alpha 通道
+        # Extract the alpha channel
         alpha = self.img.getchannel("A")
         # print(alpha.size)
         dilated_alpha = alpha.filter(ImageFilter.MaxFilter(size=5))
         # # print(dilated_alpha.size)
+
+        # Create a white area using the dilated alpha mask
         white_area = Image.new("RGBA", self.img.size, (255, 255, 255, 255))
         white_area.putalpha(dilated_alpha)
         
-        # 合并膨胀后的白色区域与原图像
+        # Merge the dilated white area with the original image
         result = Image.alpha_composite(white_area, self.img)
         # expanded_alpha = ImageOps.expand(alpha, border=border_size, fill=255)
         # white_border = Image.new("RGBA", image.size, (255, 255, 255, 255))
